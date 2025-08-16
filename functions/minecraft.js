@@ -1,7 +1,7 @@
 const { execSync } = require('child_process');
 
 // gets Minecraft server process IDs
-const MCProcID = () => {
+const getMCProcID = () => {
   try {
     const rawPIDs = execSync(`pgrep -f "java.*jar.*(minecraft|paper|fabric|forge|spigot|purpur)"`)
       .toString()
@@ -24,7 +24,7 @@ const MCProcID = () => {
 };
 
 // gets the screen session IDs which each server is running in
-const MCScreenSession = (pids = MCProcID()) => {
+const getMCScreenSession = (pids = getMCProcID()) => {
   return pids
     .map(pid => {
       try {
@@ -38,7 +38,7 @@ const MCScreenSession = (pids = MCProcID()) => {
 };
 
 // gets Minecraft server process IDs with their corresponding screen sessions
-const getMinecraftServers = () => {
+const getMCServers = () => {
   try {
     const rawPIDs = execSync(`pgrep -f "java.*jar.*(minecraft|paper|fabric|forge|spigot|purpur)"`)
       .toString()
@@ -68,4 +68,32 @@ const getMinecraftServers = () => {
   }
 };
 
-module.exports = { MCProcID, MCScreenSession, getMinecraftServers };
+// function to see how many minecraft servers are running
+const countMCServers = () => {
+  try {
+    const rawPIDs = execSync(`pgrep -f "java.*jar.*(minecraft|paper|fabric|forge|spigot|purpur)"`)
+      .toString()
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+
+    let count = 0;
+    for (const pidStr of rawPIDs) {
+      const pid = Number(pidStr);
+      if (!isNaN(pid)) {
+        try {
+          const cmd = execSync(`ps -p ${pid} -o args=`).toString();
+          if (/java.*jar.*(minecraft|paper|fabric|forge|spigot|purpur)/.test(cmd)) {
+            count++;
+          }
+        } catch {
+        }
+      }
+    }
+    return count;
+  } catch {
+    return 0;
+  }
+};
+
+module.exports = { getMCProcID, getMCScreenSession, getMCServers, countMCServers };
