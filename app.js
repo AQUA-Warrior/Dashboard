@@ -8,3 +8,12 @@ servers.forEach(({ pid, screenSession }) => {
 
 const online = countMCServers();
 console.log(`Online MC servers: ${online}`);
+
+
+// all system info
+const getSystemInfo = require('./functions/system');
+
+(async () => {
+  const systemData = await getSystemInfo();
+  console.log('System Information:', JSON.stringify(systemData, null, 2));
+})();
