@@ -2,8 +2,8 @@ const {getMCServers, countMCServers} = require('./functions/minecraft');
 
 const servers = getMCServers();
 
-servers.forEach(({ pid, screenSession, directory }) => {
-  console.log(`MC PID: ${pid} → Screen session: ${screenSession} → Directory: ${directory}`);
+servers.forEach(({ pid, screenSession, directory, ports }) => {
+  console.log(`MC PID: ${pid} → Screen session: ${screenSession} → Directory: ${directory} → Port(s): ${ports}`);
 });
 
 const online = countMCServers();

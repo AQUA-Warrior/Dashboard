@@ -4,10 +4,12 @@ const { execSync } = require('child_process');
 // gets Minecraft server process IDs with their corresponding screen sessions and directory
 const getMCServers = () => {
   try {
-    const rawPIDs = execSync(`pgrep -f "java.*jar.*(minecraft|paper|fabric|forge|spigot|purpur)"`)
+    const rawPIDs = execSync(
+      `pgrep -f "java.*jar.*(minecraft|paper|fabric|forge|spigot|purpur)"`
+    )
       .toString()
       .trim()
-      .split('\n')
+      .split("\n")
       .filter(Boolean)
       .map(Number);
 
@@ -19,16 +21,34 @@ const getMCServers = () => {
 
           const ppid = parseInt(execSync(`ps -o ppid= -p ${pid}`).toString().trim());
 
-          // get process working directory (server folder)
+          // get full directory path of server
           const cwd = execSync(`readlink -f /proc/${pid}/cwd`).toString().trim();
 
-          // get just the directory name (e.g., "fabric" or "paper")
+          // get just the directory name (server name)
           const serverName = path.basename(cwd);
+
+          // get listening port(s) for this process
+          let ports = [];
+          try {
+            const ssOut = execSync(`ss -ltnp 2>/dev/null | grep ",pid=${pid}," || true`)
+              .toString()
+              .trim()
+              .split("\n")
+              .filter(Boolean);
+
+            ports = ssOut.map(line => {
+              const match = line.match(/:(\d+)\s+/);
+              return match ? parseInt(match[1]) : null;
+            }).filter(Boolean);
+          } catch {
+            ports = [];
+          }
 
           return {
             pid,
             screenSession: ppid - 1,
-            directory: serverName
+            directory: serverName,
+            ports
           };
         } catch {
           return null;
