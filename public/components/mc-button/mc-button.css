@@ -1,0 +1,40 @@
+:host {
+  font-family: sans-serif;
+  display: inline-block;
+  position: relative;
+}
+button {
+  padding: 8px 12px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.dropdown {
+  display: none;
+  position: absolute;
+  top: 110%;
+  left: 0;
+  z-index: 10;
+  border: 1px solid #ddd;
+  background: #fff;
+  width: 250px;
+  max-height: 300px;
+  overflow-y: auto;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  padding: 10px;
+}
+.dropdown.active {
+  display: block;
+}
+.server-item {
+  border-bottom: 1px solid #eee;
+  padding: 5px 0;
+}
+.server-item:last-child {
+  border-bottom: none;
+}
+.server-title {
+  font-weight: bold;
+}
+.error {
+  color: red;
+}
