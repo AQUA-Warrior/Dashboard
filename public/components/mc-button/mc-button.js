@@ -43,16 +43,17 @@ class MCButton extends HTMLElement {
       this.button.textContent = `MC Servers (${data.length} online)`;
       this.renderDropdown();
     } catch (error) {
+      console.error('Error loading MC servers:', error);
       this.button.textContent = 'MC Servers (Error)';
       this.dropdown.innerHTML = `<div class="error">Failed to load server data.</div>`;
     }
   }
 
-  async toggleDropdown(e) {
+  toggleDropdown(e) {
     e.stopPropagation();
     this.dropdownOpen = !this.dropdownOpen;
     if (this.dropdownOpen) {
-      await this.loadServers();
+      this.renderDropdown();
       this.dropdown.classList.add('active');
       document.addEventListener('mousedown', this.handleOutsideClick);
     } else {
@@ -75,18 +76,36 @@ class MCButton extends HTMLElement {
       this.dropdown.innerHTML = '<div>No servers online.</div>';
       return;
     }
-    const html = this.servers.map(server => {
-      const { pid, screenSession, directory, ports } = server;
-      return `
-        <div class="server-item">
-          <div class="server-title">${directory}</div>
-          <div>PID: ${pid}</div>
-          <div>Screen Session: ${screenSession}</div>
-          <div>Ports: ${ports && ports.length ? ports.join(', ') : 'N/A'}</div>
-        </div>
-      `;
-    }).join('');
+    const html = this.servers
+      .map(server => {
+        const { pid, screenSession, directory, ports } = server;
+        return `
+          <div class="server-item">
+            <div class="server-title">${this.escapeHTML(String(directory))}</div>
+            <div>PID: ${this.escapeHTML(String(pid))}</div>
+            <div>Screen Session: ${this.escapeHTML(String(screenSession))}</div>
+            <div>Ports: ${ports && ports.length ? this.escapeHTML(ports.map(String).join(', ')) : 'N/A'}</div>
+          </div>
+        `;
+      })
+      .join('');
     this.dropdown.innerHTML = html;
+  }
+
+  escapeHTML(str) {
+    str = String(str);
+    return str.replace(/[&<>"'`=\/]/g, function (s) {
+      return ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+        '/': '&#x2F;',
+        '`': '&#x60;',
+        '=': '&#x3D;',
+      })[s];
+    });
   }
 }
 
