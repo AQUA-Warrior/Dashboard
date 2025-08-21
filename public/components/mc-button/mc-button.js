@@ -39,8 +39,8 @@ class MCButton extends HTMLElement {
       const response = await fetch('/api/mc-servers');
       if (!response.ok) throw new Error('Network response was not ok');
       const data = await response.json();
-      this.servers = data;
-      this.button.textContent = `MC Servers (${data.length} online)`;
+      this.servers = Array.isArray(data) ? data : [];
+      this.button.textContent = `MC Servers (${this.servers.length} online)`;
       this.renderDropdown();
     } catch (error) {
       console.error('Error loading MC servers:', error);
@@ -81,9 +81,9 @@ class MCButton extends HTMLElement {
         const { pid, screenSession, directory, ports } = server;
         return `
           <div class="server-item">
-            <div class="server-title">${this.escapeHTML(String(directory))}</div>
-            <div>PID: ${this.escapeHTML(String(pid))}</div>
-            <div>Screen Session: ${this.escapeHTML(String(screenSession))}</div>
+            <div class="server-title">${this.escapeHTML(directory)}</div>
+            <div>PID: ${this.escapeHTML(pid)}</div>
+            <div>Screen Session: ${this.escapeHTML(screenSession)}</div>
             <div>Ports: ${ports && ports.length ? this.escapeHTML(ports.map(String).join(', ')) : 'N/A'}</div>
           </div>
         `;

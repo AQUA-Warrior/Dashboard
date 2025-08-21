@@ -5,10 +5,12 @@ const helmet = require('helmet');
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+app.set('trust proxy', 1);
+
 app.use(
   helmet({
-    crossOriginOpenerPolicy: false,
-    originAgentCluster: false,
+    crossOriginOpenerPolicy: { policy: 'same-origin' },
+    originAgentCluster: true,
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
