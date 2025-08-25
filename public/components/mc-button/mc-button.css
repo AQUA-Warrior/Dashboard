@@ -29,6 +29,11 @@ button {
   border-bottom: 1px solid #eee;
   padding: 5px 0;
 }
+
+.server-item:hover {
+  background-color: #999999;
+}
+
 .server-item:last-child {
   border-bottom: none;
 }

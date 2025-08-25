@@ -2,6 +2,7 @@ const MC_BUTTON_TEMPLATE = `
   <link rel="stylesheet" href="./components/mc-button/mc-button.css">
   <button id="mcButton">MC Servers</button>
   <div id="dropdown" class="dropdown"></div>
+  <mc-modal id="server-modal"></mc-modal>
 `;
 
 class MCButton extends HTMLElement {
@@ -13,6 +14,7 @@ class MCButton extends HTMLElement {
     this.handleOutsideClick = this.handleOutsideClick.bind(this);
     this.toggleDropdown = this.toggleDropdown.bind(this);
     this.loadServers = this.loadServers.bind(this);
+    this.openServerModal = this.openServerModal.bind(this);
   }
 
   connectedCallback() {
@@ -20,6 +22,7 @@ class MCButton extends HTMLElement {
 
     this.button = this.shadowRoot.getElementById('mcButton');
     this.dropdown = this.shadowRoot.getElementById('dropdown');
+    this.modal = this.shadowRoot.getElementById('server-modal');
 
     if (!this.button) {
       throw new Error('mc-button template missing #mcButton');
@@ -77,10 +80,10 @@ class MCButton extends HTMLElement {
       return;
     }
     const html = this.servers
-      .map(server => {
+      .map((server, index) => {
         const { pid, screenSession, directory, ports } = server;
         return `
-          <div class="server-item">
+          <div class="server-item" data-index="${index}">
             <div class="server-title">${this.escapeHTML(directory)}</div>
             <div>PID: ${this.escapeHTML(pid)}</div>
             <div>Screen Session: ${this.escapeHTML(screenSession)}</div>
@@ -90,6 +93,21 @@ class MCButton extends HTMLElement {
       })
       .join('');
     this.dropdown.innerHTML = html;
+    
+    // Add click event listeners to server items
+    this.dropdown.querySelectorAll('.server-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const index = parseInt(item.getAttribute('data-index'));
+        this.openServerModal(this.servers[index]);
+      });
+    });
+  }
+
+  openServerModal(serverData) {
+    this.dropdown.classList.remove('active');
+    this.dropdownOpen = false;
+    document.removeEventListener('mousedown', this.handleOutsideClick);
+    this.modal.open(serverData);
   }
 
   escapeHTML(str) {
