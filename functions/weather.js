@@ -10,7 +10,6 @@ async function getFullWeather(location = "Waterloo,Ontario,Canada") {
   }
 
   try {
-    // Use forecast API with days=1 to get current, forecast day, and astronomy data
     const url = `http://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${encodeURIComponent(
       location
     )}&days=1&aqi=yes&alerts=yes`;
@@ -18,17 +17,11 @@ async function getFullWeather(location = "Waterloo,Ontario,Canada") {
     const response = await axios.get(url);
     const data = response.data;
 
-    // Extract current weather
     const current = data.current;
-    // Extract forecast day (today)
     const forecastDay = data.forecast.forecastday[0].day;
-    // Extract astronomy
     const astro = data.forecast.forecastday[0].astro;
-
-    // Extract alerts if any
     const alerts = data.alerts?.alert || [];
 
-    // Compose a comprehensive weather object
     const weather = {
       location: {
         name: data.location.name,
