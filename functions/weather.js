@@ -1,105 +1,233 @@
 const axios = require("axios");
 
-const API_KEY = "ffef98ef8efc4a17bd8215521252708";
 const CACHE_TTL = 5 * 60 * 1000;
 let cache = { data: null, timestamp: 0 };
 
-async function getFullWeather(location = "Waterloo,Ontario,Canada") {
-  if (Date.now() - cache.timestamp < CACHE_TTL && cache.data && cache.data.locationName === location) {
+const weatherCodeToText = {
+  0: "Clear sky",
+  1: "Mainly clear",
+  2: "Partly cloudy",
+  3: "Overcast",
+  45: "Fog",
+  48: "Depositing rime fog",
+  51: "Light drizzle",
+  53: "Moderate drizzle",
+  55: "Dense drizzle",
+  56: "Light freezing drizzle",
+  57: "Dense freezing drizzle",
+  61: "Slight rain",
+  63: "Moderate rain",
+  65: "Heavy rain",
+  66: "Light freezing rain",
+  67: "Heavy freezing rain",
+  71: "Slight snow fall",
+  73: "Moderate snow fall",
+  75: "Heavy snow fall",
+  77: "Snow grains",
+  80: "Slight rain showers",
+  81: "Moderate rain showers",
+  82: "Violent rain showers",
+  85: "Slight snow showers",
+  86: "Heavy snow showers",
+  95: "Thunderstorm",
+  96: "Thunderstorm with slight hail",
+  99: "Thunderstorm with heavy hail"
+};
+
+function getCurrentHourData(hourlyData, currentTime) {
+  const currentHour = new Date(currentTime).toISOString().slice(0, 13);
+  const hourIndex = hourlyData.time.findIndex(t => t.startsWith(currentHour));
+  
+  if (hourIndex === -1) return null;
+  
+  return {
+    temperature: hourlyData.temperature_2m[hourIndex],
+    apparent_temperature: hourlyData.apparent_temperature[hourIndex],
+    humidity: hourlyData.relative_humidity_2m[hourIndex],
+    dew_point: hourlyData.dew_point_2m[hourIndex],
+    precipitation: hourlyData.precipitation[hourIndex],
+    rain: hourlyData.rain[hourIndex],
+    showers: hourlyData.showers[hourIndex],
+    snowfall: hourlyData.snowfall[hourIndex],
+    precipitation_probability: hourlyData.precipitation_probability[hourIndex],
+    visibility: hourlyData.visibility[hourIndex],
+    cloud_cover: hourlyData.cloud_cover[hourIndex],
+    cloud_cover_low: hourlyData.cloud_cover_low[hourIndex],
+    cloud_cover_mid: hourlyData.cloud_cover_mid[hourIndex],
+    cloud_cover_high: hourlyData.cloud_cover_high[hourIndex],
+    wind_speed: hourlyData.wind_speed_10m[hourIndex],
+    wind_direction: hourlyData.wind_direction_10m[hourIndex],
+    wind_gusts: hourlyData.wind_gusts_10m[hourIndex],
+    uv_index: hourlyData.uv_index[hourIndex],
+    weather_code: hourlyData.weather_code[hourIndex],
+    is_day: hourlyData.is_day[hourIndex],
+    snow_depth: hourlyData.snow_depth[hourIndex]
+  };
+}
+
+function getTodayData(dailyData) {
+  const today = new Date().toISOString().slice(0, 10);
+  const dayIndex = dailyData.time.findIndex(t => t === today);
+  
+  if (dayIndex === -1) return null;
+  
+  return {
+    date: dailyData.time[dayIndex],
+    temperature_max: dailyData.temperature_2m_max[dayIndex],
+    temperature_min: dailyData.temperature_2m_min[dayIndex],
+    apparent_temperature_max: dailyData.apparent_temperature_max[dayIndex],
+    apparent_temperature_min: dailyData.apparent_temperature_min[dayIndex],
+    sunrise: dailyData.sunrise[dayIndex],
+    sunset: dailyData.sunset[dayIndex],
+    daylight_duration: dailyData.daylight_duration[dayIndex],
+    sunshine_duration: dailyData.sunshine_duration[dayIndex],
+    uv_index_max: dailyData.uv_index_max[dayIndex],
+    precipitation_sum: dailyData.precipitation_sum[dayIndex],
+    rain_sum: dailyData.rain_sum[dayIndex],
+    showers_sum: dailyData.showers_sum[dayIndex],
+    snowfall_sum: dailyData.snowfall_sum[dayIndex],
+    precipitation_hours: dailyData.precipitation_hours[dayIndex],
+    precipitation_probability_max: dailyData.precipitation_probability_max[dayIndex],
+    wind_speed_max: dailyData.wind_speed_10m_max[dayIndex],
+    wind_gusts_max: dailyData.wind_gusts_10m_max[dayIndex],
+    wind_direction_dominant: dailyData.wind_direction_10m_dominant[dayIndex],
+    weather_code: dailyData.weather_code[dayIndex],
+    weather_text: weatherCodeToText[dailyData.weather_code[dayIndex]] || "Unknown"
+  };
+}
+
+function getForecastDays(dailyData, days = 7) {
+  const forecast = [];
+  const today = new Date().toISOString().slice(0, 10);
+  const todayIndex = dailyData.time.findIndex(t => t === today);
+  
+  if (todayIndex === -1) return forecast;
+  
+  for (let i = 0; i < days && (todayIndex + i) < dailyData.time.length; i++) {
+    const idx = todayIndex + i;
+    forecast.push({
+      date: dailyData.time[idx],
+      temperature_max: dailyData.temperature_2m_max[idx],
+      temperature_min: dailyData.temperature_2m_min[idx],
+      precipitation_sum: dailyData.precipitation_sum[idx],
+      precipitation_probability_max: dailyData.precipitation_probability_max[idx],
+      weather_code: dailyData.weather_code[idx],
+      weather_text: weatherCodeToText[dailyData.weather_code[idx]] || "Unknown",
+      sunrise: dailyData.sunrise[idx],
+      sunset: dailyData.sunset[idx],
+      wind_speed_max: dailyData.wind_speed_10m_max[idx],
+      uv_index_max: dailyData.uv_index_max[idx]
+    });
+  }
+  
+  return forecast;
+}
+
+function getHourlyForecast(hourlyData, hours = 24) {
+  const forecast = [];
+  const currentTime = new Date();
+  const currentHour = currentTime.toISOString().slice(0, 13);
+  const startIndex = hourlyData.time.findIndex(t => t.startsWith(currentHour));
+  
+  if (startIndex === -1) return forecast;
+  
+  for (let i = 0; i < hours && (startIndex + i) < hourlyData.time.length; i++) {
+    const idx = startIndex + i;
+    forecast.push({
+      time: hourlyData.time[idx],
+      temperature: hourlyData.temperature_2m[idx],
+      apparent_temperature: hourlyData.apparent_temperature[idx],
+      precipitation: hourlyData.precipitation[idx],
+      precipitation_probability: hourlyData.precipitation_probability[idx],
+      weather_code: hourlyData.weather_code[idx],
+      weather_text: weatherCodeToText[hourlyData.weather_code[idx]] || "Unknown",
+      wind_speed: hourlyData.wind_speed_10m[idx],
+      wind_direction: hourlyData.wind_direction_10m[idx],
+      cloud_cover: hourlyData.cloud_cover[idx],
+      is_day: hourlyData.is_day[idx]
+    });
+  }
+  
+  return forecast;
+}
+
+async function getOpenMeteoWeather(latitude = 43.455045, longitude = -80.55851, location = null) {
+  const cacheKey = `${latitude},${longitude}`;
+  
+  if (Date.now() - cache.timestamp < CACHE_TTL && cache.data && cache.data.cacheKey === cacheKey) {
     return cache.data.weather;
   }
 
   try {
-    const url = `http://api.weatherapi.com/v1/forecast.json?key=${API_KEY}&q=${encodeURIComponent(
-      location
-    )}&days=1&aqi=yes&alerts=yes`;
+    const params = new URLSearchParams({
+      latitude: latitude,
+      longitude: longitude,
+      current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,surface_pressure',
+      hourly: 'temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,precipitation,rain,showers,snowfall,precipitation_probability,visibility,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,sunshine_duration,cloud_cover_low,cloud_cover_high,cloud_cover_mid,is_day,snow_depth,weather_code',
+      daily: 'temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,sunrise,sunset,daylight_duration,sunshine_duration,uv_index_max,rain_sum,showers_sum,snowfall_sum,precipitation_sum,precipitation_hours,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,weather_code',
+      timezone: 'auto',
+      forecast_days: 14,
+      past_days: 1
+    });
 
+    const url = `https://api.open-meteo.com/v1/forecast?${params.toString()}`;
     const response = await axios.get(url);
     const data = response.data;
 
-    const current = data.current;
-    const forecastDay = data.forecast.forecastday[0].day;
-    const astro = data.forecast.forecastday[0].astro;
-    const alerts = data.alerts?.alert || [];
-
     const weather = {
       location: {
-        name: data.location.name,
-        region: data.location.region,
-        country: data.location.country,
-        lat: data.location.lat,
-        lon: data.location.lon,
-        tz_id: data.location.tz_id,
-        localtime: data.location.localtime,
-        localtime_epoch: data.location.localtime_epoch,
+        name: location || `${data.latitude}, ${data.longitude}`,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        elevation: data.elevation,
+        timezone: data.timezone,
+        timezone_abbreviation: data.timezone_abbreviation
       },
+      
       current: {
-        last_updated: current.last_updated,
-        last_updated_epoch: current.last_updated_epoch,
-        temp_c: current.temp_c,
-        feelslike_c: current.feelslike_c,
-        windchill_c: current.windchill_c,
-        heatindex_c: current.heatindex_c,
-        condition: {
-          text: current.condition.text,
-          icon: current.condition.icon,
-          code: current.condition.code,
+        time: data.current.time,
+        temperature: data.current.temperature_2m,
+        feelslike: data.current.apparent_temperature,
+        humidity: data.current.relative_humidity_2m,
+        is_day: data.current.is_day === 1,
+        conditions: weatherCodeToText[data.current.weather_code] || "Unknown",
+        weather_code: data.current.weather_code,
+        cloud_cover: data.current.cloud_cover,
+        pressure: data.current.surface_pressure,
+        wind: {
+          speed_kmh: data.current.wind_speed_10m,
+          direction: data.current.wind_direction_10m,
+          gusts_kmh: data.current.wind_gusts_10m
         },
-        wind_kph: current.wind_kph,
-        wind_dir: current.wind_dir,
-        precip_mm: current.precip_mm,
-        humidity: current.humidity,
-        cloud: current.cloud,
-        uv: current.uv,
-        gust_kph: current.gust_kph,
-        snow_cm: current.snow_cm || 0,
-        air_quality_index_us_epa: current.air_quality ? current.air_quality["us-epa-index"] : null,
+        precipitation: {
+          total: data.current.precipitation,
+          rain: data.current.rain,
+          showers: data.current.showers,
+          snow: data.current.snowfall
+        }
       },
+      
+      today: getTodayData(data.daily),
+      
       forecast: {
-        daily_will_it_rain: forecastDay.daily_will_it_rain,
-        daily_will_it_snow: forecastDay.daily_will_it_snow,
-        daily_chance_of_rain: forecastDay.daily_chance_of_rain,
-        daily_chance_of_snow: forecastDay.daily_chance_of_snow,
-        totalsnow_cm: forecastDay.totalsnow_cm,
-        maxtemp_c: forecastDay.maxtemp_c,
-        mintemp_c: forecastDay.mintemp_c,
-        avgtemp_c: forecastDay.avgtemp_c,
-        maxwind_kph: forecastDay.maxwind_kph,
-        totalprecip_mm: forecastDay.totalprecip_mm,
-        avghumidity: forecastDay.avghumidity,
-        condition: {
-          text: forecastDay.condition.text,
-          icon: forecastDay.condition.icon,
-          code: forecastDay.condition.code,
-        },
-        uv: forecastDay.uv,
+        daily: getForecastDays(data.daily, 7),
+        hourly: getHourlyForecast(data.hourly, 24)
       },
-      astronomy: {
-        sunrise: astro.sunrise,
-        sunset: astro.sunset,
-        moonrise: astro.moonrise,
-        moonset: astro.moonset,
-        moon_phase: astro.moon_phase,
-        moon_illumination: astro.moon_illumination,
-        is_moon_up: astro.is_moon_up,
-        is_sun_up: astro.is_sun_up,
-      },
-      alerts: alerts.map(alert => ({
-        headline: alert.headline,
-        severity: alert.severity,
-        urgency: alert.urgency,
-        areas: alert.areas,
-        category: alert.category,
-        certainty: alert.certainty,
-        event: alert.event,
-        effective: alert.effective,
-        expires: alert.expires,
-        desc: alert.desc,
-        instruction: alert.instruction,
-      })),
+      
+      raw: {
+        daily: data.daily,
+        hourly: data.hourly
+      }
     };
 
-    cache = { data: { locationName: location, weather }, timestamp: Date.now() };
+    cache = { 
+      data: { 
+        cacheKey: cacheKey, 
+        weather 
+      }, 
+      timestamp: Date.now() 
+    };
+    
     return weather;
   } catch (error) {
     if (error.response) {
@@ -110,4 +238,4 @@ async function getFullWeather(location = "Waterloo,Ontario,Canada") {
   }
 }
 
-module.exports = { getFullWeather };
+module.exports = { getOpenMeteoWeather };
