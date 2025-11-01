@@ -3,6 +3,7 @@ const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const { getMCServers } = require('./functions/minecraft');
 const { execSync } = require('child_process');
+const getSystemInfo = require('./functions/system');
 
 const limiter = rateLimit({
   windowMs: 10 * 1000,
@@ -71,6 +72,16 @@ router.get('/mc-server/:pid', async (req, res) => {
   } catch (err) {
     console.error('Error fetching MC server details:', err);
     res.status(500).json({ error: 'Failed to get MC server details' });
+  }
+});
+
+router.get('/system-info', (req, res) => {
+  try {
+    const systemInfo = getSystemInfo();
+    res.json(systemInfo);
+  } catch (err) {
+    console.error('Error fetching system info:', err);
+    res.status(500).json({ error: 'Failed to get system information' });
   }
 });
 

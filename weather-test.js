@@ -1,6 +1,12 @@
 const { getOpenMeteoWeather } = require('./functions/weather');
 
-// Example usage
+// cardinal direction helper
+function getWindDirection(degrees) {
+  const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+  const index = Math.round(degrees / 22.5) % 16;
+  return directions[index];
+}
+
 getOpenMeteoWeather(43.455045, -80.55851, "Waterloo, Ontario")
   .then(weather => {
     // Access current conditions
@@ -9,6 +15,7 @@ getOpenMeteoWeather(43.455045, -80.55851, "Waterloo, Ontario")
     console.log("Conditions:", weather.current.conditions);
     console.log("Humidity:", weather.current.humidity + "%");
     console.log("Wind Speed:", weather.current.wind.speed_kmh + " km/h");
+    console.log("Wind Direction:", weather.current.wind.direction + "° (" + getWindDirection(weather.current.wind.direction) + ")");
     
     // Access today's forecast
     console.log("\nToday's Forecast:");
