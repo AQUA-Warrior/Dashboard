@@ -4,6 +4,7 @@ const rateLimit = require('express-rate-limit');
 const { getMCServers } = require('./functions/minecraft');
 const { execSync } = require('child_process');
 const getSystemInfo = require('./functions/system');
+const { getOpenMeteoWeather } = require('./functions/weather');
 
 const limiter = rateLimit({
   windowMs: 10 * 1000,
@@ -82,6 +83,20 @@ router.get('/system-info', (req, res) => {
   } catch (err) {
     console.error('Error fetching system info:', err);
     res.status(500).json({ error: 'Failed to get system information' });
+  }
+});
+
+router.get('/weather', async (req, res) => {
+  try {
+    const latitude = parseFloat(req.query.lat) || 43.455045;
+    const longitude = parseFloat(req.query.lon) || -80.55851;
+    const location = req.query.location || 'Waterloo, Ontario';
+    
+    const weather = await getOpenMeteoWeather(latitude, longitude, location);
+    res.json(weather);
+  } catch (err) {
+    console.error('Error fetching weather:', err);
+    res.status(500).json({ error: 'Failed to get weather information' });
   }
 });
 
