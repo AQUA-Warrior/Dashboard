@@ -223,7 +223,8 @@ class WeatherModal extends HTMLElement {
                 <div class="hour-time">${this.formatHour(hour.time)}</div>
                 <div class="hour-temp">${Math.round(hour.temperature)}°</div>
                 <div class="hour-conditions">${this.escapeHTML(hour.weather_text)}</div>
-                <div class="hour-detail">💧 ${hour.precipitation_probability}%</div>
+                <div class="hour-detail">Feels like ${Math.round(hour.apparent_temperature)}°C</div>
+                <div class="hour-detail">${this.renderHourlyPrecip(hour)}</div>
                 <div class="hour-detail">
                   💨 ${Math.round(hour.wind_speed)} km/h
                   <span style="display: inline-block; transform: rotate(${hour.wind_direction}deg);">↑</span>
@@ -237,6 +238,35 @@ class WeatherModal extends HTMLElement {
     `;
 
     this.dataContainer.innerHTML = html;
+  }
+
+  renderHourlyPrecip(hour) {
+    // Prefer explicit fields if present
+    const rain = (typeof hour.rain !== 'undefined' && hour.rain !== null) ? Number(hour.rain) : null;
+    const snowfall = (typeof hour.snowfall !== 'undefined' && hour.snowfall !== null) ? Number(hour.snowfall) : null;
+    const precip = Number(hour.precipitation) || 0;
+    // If both rain and snow exist, show both
+    if (rain && rain > 0 && snowfall && snowfall > 0) {
+      const rainStr = rain % 1 === 0 ? `${rain}` : rain.toFixed(1);
+      const snowStr = snowfall % 1 === 0 ? `${snowfall}` : snowfall.toFixed(1);
+      return `Rain: ${rainStr} mm / Snow: ${snowStr} cm`;
+    }
+
+    if (snowfall && snowfall > 0) {
+      const snowStr = snowfall % 1 === 0 ? `${snowfall}` : snowfall.toFixed(1);
+      return `Snow: ${snowStr} cm`;
+    }
+
+    if (rain && rain > 0) {
+      const rainStr = rain % 1 === 0 ? `${rain}` : rain.toFixed(1);
+      return `Rain: ${rainStr} mm`;
+    }
+
+    if (precip && precip > 0) {
+      return `Precipitation: ${precip % 1 === 0 ? precip : precip.toFixed(1)} mm`;
+    }
+
+    return 'Precipitation: 0 mm';
   }
 
   getWindDirection(degrees) {
