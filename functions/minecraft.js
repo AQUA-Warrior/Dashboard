@@ -58,7 +58,8 @@ async function getMCServers() {
           pid: proc.pid,
           screenSession: proc.ppid ? proc.ppid - 1 : null,
           directory: sanitizeString(serverName),
-          ports
+          ports,
+          command: sanitizeString(proc.cmd)
         });
       } catch (err) {
         console.error("Error processing MC server:", err);
