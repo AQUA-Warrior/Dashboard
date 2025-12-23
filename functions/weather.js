@@ -72,6 +72,10 @@ function getTodayData(dailyData, hourlyData) {
   if (dayIndex === -1) return null;
   
   let humidityAvg = null, visibilityMin = null, pressureAvg = null;
+  let precipitationHours = 0;
+  let rainRange = null;
+  let snowRange = null;
+  
   if (hourlyData) {
     const todayStart = `${today}T00:00`;
     const todayEnd = `${today}T23:59`;
@@ -93,6 +97,73 @@ function getTodayData(dailyData, hourlyData) {
       if (pressures.length > 0) {
         pressureAvg = Math.round(pressures.reduce((a, b) => a + b, 0) / pressures.length * 10) / 10;
       }
+      
+      let firstRainHour = null, lastRainHour = null;
+      let firstSnowHour = null, lastSnowHour = null;
+      
+      for (let i = 0; i < todayIndices.length; i++) {
+        const idx = todayIndices[i];
+        const precip = hourlyData.precipitation[idx] || 0;
+        const rain = (hourlyData.rain && hourlyData.rain[idx]) || 0;
+        const snowfall = (hourlyData.snowfall && hourlyData.snowfall[idx]) || 0;
+        
+        if (precip > 0) {
+          precipitationHours++;
+        }
+        
+        const hasRain = rain > 0 || (precip > 0 && snowfall === 0);
+        const hasSnow = snowfall > 0;
+        
+        if (hasRain) {
+          if (firstRainHour === null) {
+            firstRainHour = new Date(hourlyData.time[idx]);
+          }
+          lastRainHour = new Date(hourlyData.time[idx]);
+        }
+        
+        if (hasSnow) {
+          if (firstSnowHour === null) {
+            firstSnowHour = new Date(hourlyData.time[idx]);
+          }
+          lastSnowHour = new Date(hourlyData.time[idx]);
+        }
+      }
+      
+      if (firstRainHour && lastRainHour) {
+        const startHour = String(firstRainHour.getHours()).padStart(2, '0');
+        const startMin = String(firstRainHour.getMinutes()).padStart(2, '0');
+        const endHour = String(lastRainHour.getHours()).padStart(2, '0');
+        const endMin = String(lastRainHour.getMinutes()).padStart(2, '0');
+        
+        const formatTime = (h, m) => {
+          const hour = parseInt(h);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          const displayHour = hour % 12 || 12;
+          return `${displayHour}:${m} ${ampm}`;
+        };
+        
+        const startTime = formatTime(startHour, startMin);
+        const endTime = formatTime(endHour, endMin);
+        rainRange = startTime === endTime ? startTime : `${startTime} - ${endTime}`;
+      }
+      
+      if (firstSnowHour && lastSnowHour) {
+        const startHour = String(firstSnowHour.getHours()).padStart(2, '0');
+        const startMin = String(firstSnowHour.getMinutes()).padStart(2, '0');
+        const endHour = String(lastSnowHour.getHours()).padStart(2, '0');
+        const endMin = String(lastSnowHour.getMinutes()).padStart(2, '0');
+        
+        const formatTime = (h, m) => {
+          const hour = parseInt(h);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          const displayHour = hour % 12 || 12;
+          return `${displayHour}:${m} ${ampm}`;
+        };
+        
+        const startTime = formatTime(startHour, startMin);
+        const endTime = formatTime(endHour, endMin);
+        snowRange = startTime === endTime ? startTime : `${startTime} - ${endTime}`;
+      }
     }
   }
   
@@ -109,9 +180,11 @@ function getTodayData(dailyData, hourlyData) {
     uv_index_max: dailyData.uv_index_max[dayIndex],
     precipitation_sum: dailyData.precipitation_sum[dayIndex],
     rain_sum: dailyData.rain_sum[dayIndex],
+    rain_range: rainRange,
     showers_sum: dailyData.showers_sum[dayIndex],
     snowfall_sum: dailyData.snowfall_sum[dayIndex],
-    precipitation_hours: dailyData.precipitation_hours[dayIndex],
+    snow_range: snowRange,
+    precipitation_hours: precipitationHours,
     precipitation_probability_max: dailyData.precipitation_probability_max[dayIndex],
     wind_speed_max: dailyData.wind_speed_10m_max[dayIndex],
     wind_gusts_max: dailyData.wind_gusts_10m_max[dayIndex],
@@ -124,7 +197,7 @@ function getTodayData(dailyData, hourlyData) {
   };
 }
 
-function getForecastDays(dailyData, days = 7) {
+function getForecastDays(dailyData, hourlyData, days = 7) {
   const forecast = [];
   const today = new Date().toISOString().slice(0, 10);
   const todayIndex = dailyData.time.findIndex(t => t === today);
@@ -133,13 +206,85 @@ function getForecastDays(dailyData, days = 7) {
   
   for (let i = 0; i < days && (todayIndex + i) < dailyData.time.length; i++) {
     const idx = todayIndex + i;
+    const forecastDate = dailyData.time[idx];
+    let rainRange = null;
+    let snowRange = null;
+    
+    // Calculate time ranges if hourly data is available
+    if (hourlyData) {
+      const dateStart = `${forecastDate}T00:00`;
+      const dateEnd = `${forecastDate}T23:59`;
+      const dayHours = hourlyData.time.filter((t, index) => t >= dateStart && t <= dateEnd);
+      const dayIndices = dayHours.map(t => hourlyData.time.indexOf(t));
+      
+      if (dayIndices.length > 0) {
+        let firstRainHour = null, lastRainHour = null;
+        let firstSnowHour = null, lastSnowHour = null;
+        
+        for (let j = 0; j < dayIndices.length; j++) {
+          const hourIdx = dayIndices[j];
+          const precip = hourlyData.precipitation[hourIdx] || 0;
+          const rain = (hourlyData.rain && hourlyData.rain[hourIdx]) || 0;
+          const snowfall = (hourlyData.snowfall && hourlyData.snowfall[hourIdx]) || 0;
+          
+          const hasRain = rain > 0 || (precip > 0 && snowfall === 0);
+          const hasSnow = snowfall > 0;
+          
+          if (hasRain) {
+            if (firstRainHour === null) {
+              firstRainHour = new Date(hourlyData.time[hourIdx]);
+            }
+            lastRainHour = new Date(hourlyData.time[hourIdx]);
+          }
+          
+          if (hasSnow) {
+            if (firstSnowHour === null) {
+              firstSnowHour = new Date(hourlyData.time[hourIdx]);
+            }
+            lastSnowHour = new Date(hourlyData.time[hourIdx]);
+          }
+        }
+        
+        const formatTime = (h, m) => {
+          const hour = parseInt(h);
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          const displayHour = hour % 12 || 12;
+          return `${displayHour}:${m} ${ampm}`;
+        };
+        
+        if (firstRainHour && lastRainHour) {
+          const startHour = String(firstRainHour.getHours()).padStart(2, '0');
+          const startMin = String(firstRainHour.getMinutes()).padStart(2, '0');
+          const endHour = String(lastRainHour.getHours()).padStart(2, '0');
+          const endMin = String(lastRainHour.getMinutes()).padStart(2, '0');
+          
+          const startTime = formatTime(startHour, startMin);
+          const endTime = formatTime(endHour, endMin);
+          rainRange = startTime === endTime ? startTime : `${startTime} - ${endTime}`;
+        }
+        
+        if (firstSnowHour && lastSnowHour) {
+          const startHour = String(firstSnowHour.getHours()).padStart(2, '0');
+          const startMin = String(firstSnowHour.getMinutes()).padStart(2, '0');
+          const endHour = String(lastSnowHour.getHours()).padStart(2, '0');
+          const endMin = String(lastSnowHour.getMinutes()).padStart(2, '0');
+          
+          const startTime = formatTime(startHour, startMin);
+          const endTime = formatTime(endHour, endMin);
+          snowRange = startTime === endTime ? startTime : `${startTime} - ${endTime}`;
+        }
+      }
+    }
+    
     forecast.push({
       date: dailyData.time[idx],
       temperature_max: dailyData.temperature_2m_max[idx],
       temperature_min: dailyData.temperature_2m_min[idx],
       precipitation_sum: dailyData.precipitation_sum[idx],
       rain_sum: dailyData.rain_sum[idx],
+      rain_range: rainRange,
       snowfall_sum: dailyData.snowfall_sum[idx],
+      snow_range: snowRange,
       precipitation_probability_max: dailyData.precipitation_probability_max[idx],
       weather_code: dailyData.weather_code[idx],
       weather_text: weatherCodeToText[dailyData.weather_code[idx]] || "Unknown",
@@ -195,7 +340,7 @@ async function getOpenMeteoWeather(latitude = 43.455045, longitude = -80.55851, 
     const params = new URLSearchParams({
       latitude: latitude,
       longitude: longitude,
-      current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,surface_pressure',
+      current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,surface_pressure,visibility',
       hourly: 'temperature_2m,apparent_temperature,relative_humidity_2m,dew_point_2m,precipitation,rain,showers,snowfall,precipitation_probability,visibility,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,sunshine_duration,cloud_cover_low,cloud_cover_high,cloud_cover_mid,is_day,snow_depth,weather_code',
       daily: 'temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,sunrise,sunset,daylight_duration,sunshine_duration,uv_index_max,rain_sum,showers_sum,snowfall_sum,precipitation_sum,precipitation_hours,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,weather_code',
       timezone: 'auto',
@@ -237,13 +382,14 @@ async function getOpenMeteoWeather(latitude = 43.455045, longitude = -80.55851, 
           rain: data.current.rain,
           showers: data.current.showers,
           snow: data.current.snowfall
-        }
+        },
+        visibility: data.current.visibility
       },
       
       today: getTodayData(data.daily, data.hourly),
       
       forecast: {
-        daily: getForecastDays(data.daily, 7),
+        daily: getForecastDays(data.daily, data.hourly, 7),
         hourly: getHourlyForecast(data.hourly, 24)
       },
       

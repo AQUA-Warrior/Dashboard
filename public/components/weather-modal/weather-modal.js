@@ -165,10 +165,18 @@ class WeatherModal extends HTMLElement {
             <span class="label">Rain:</span>
             <span class="value">${today.rain_sum} mm</span>
           </div>
+          ${today.rain_range ? `<div class="detail-item">
+            <span class="label">Rain Range:</span>
+            <span class="value">${today.rain_range}</span>
+          </div>` : ''}
           <div class="detail-item">
             <span class="label">Snow:</span>
             <span class="value">${today.snowfall_sum} cm</span>
           </div>
+          ${today.snow_range ? `<div class="detail-item">
+            <span class="label">Snow Range:</span>
+            <span class="value">${today.snow_range}</span>
+          </div>` : ''}
           <div class="detail-item">
             <span class="label">Precip Hours:</span>
             <span class="value">${today.precipitation_hours}h</span>
