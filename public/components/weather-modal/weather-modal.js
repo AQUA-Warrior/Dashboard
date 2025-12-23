@@ -181,6 +181,18 @@ class WeatherModal extends HTMLElement {
             <span class="label">UV Index:</span>
             <span class="value">${today.uv_index_max}</span>
           </div>
+          ${today.humidity_avg !== null ? `<div class="detail-item">
+            <span class="label">Avg Humidity:</span>
+            <span class="value">${today.humidity_avg}%</span>
+          </div>` : ''}
+          ${today.visibility_min !== null ? `<div class="detail-item">
+            <span class="label">Min Visibility:</span>
+            <span class="value">${(today.visibility_min / 1000).toFixed(1)} km</span>
+          </div>` : ''}
+          ${today.pressure_avg !== null ? `<div class="detail-item">
+            <span class="label">Avg Pressure:</span>
+            <span class="value">${today.pressure_avg} hPa</span>
+          </div>` : ''}
           <div class="detail-item">
             <span class="label">Sunrise:</span>
             <span class="value">${this.formatTime(today.sunrise)}</span>
@@ -193,10 +205,10 @@ class WeatherModal extends HTMLElement {
             <span class="label">Daylight:</span>
             <span class="value">${this.formatDuration(today.daylight_duration)}</span>
           </div>
-          <div class="detail-item">
+          ${(today.sunshine_duration && today.sunshine_duration > 0) ? `<div class="detail-item">
             <span class="label">Sunshine:</span>
             <span class="value">${this.formatDuration(today.sunshine_duration)}</span>
-          </div>
+          </div>` : ''}
         </div>
 
         <div class="weather-section full-width">
@@ -207,7 +219,8 @@ class WeatherModal extends HTMLElement {
                 <div class="day-name">${this.formatDate(day.date)}</div>
                 <div class="day-conditions">${this.escapeHTML(day.weather_text)}</div>
                 <div class="day-temp">${Math.round(day.temperature_max)}° / ${Math.round(day.temperature_min)}°</div>
-                <div class="day-detail">💧 ${day.precipitation_sum}mm (${day.precipitation_probability_max}%)</div>
+                ${(day.rain_sum || 0) > 0 ? `<div class="day-detail">🌧️ Rain: ${day.rain_sum}mm</div>` : ''}
+                ${(day.snowfall_sum || 0) > 0 ? `<div class="day-detail">❄️ Snow: ${day.snowfall_sum}cm</div>` : ''}
                 <div class="day-detail">💨 ${Math.round(day.wind_speed_max)} km/h</div>
                 <div class="day-detail">UV ${day.uv_index_max}</div>
               </div>

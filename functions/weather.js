@@ -65,11 +65,36 @@ function getCurrentHourData(hourlyData, currentTime) {
   };
 }
 
-function getTodayData(dailyData) {
+function getTodayData(dailyData, hourlyData) {
   const today = new Date().toISOString().slice(0, 10);
   const dayIndex = dailyData.time.findIndex(t => t === today);
   
   if (dayIndex === -1) return null;
+  
+  let humidityAvg = null, visibilityMin = null, pressureAvg = null;
+  if (hourlyData) {
+    const todayStart = `${today}T00:00`;
+    const todayEnd = `${today}T23:59`;
+    const todayHours = hourlyData.time.filter((t, i) => t >= todayStart && t <= todayEnd);
+    const todayIndices = todayHours.map(t => hourlyData.time.indexOf(t));
+    
+    if (todayIndices.length > 0) {
+      const humidities = todayIndices.map(i => hourlyData.relative_humidity_2m[i]).filter(h => h !== null);
+      if (humidities.length > 0) {
+        humidityAvg = Math.round(humidities.reduce((a, b) => a + b, 0) / humidities.length);
+      }
+      
+      const visibilities = todayIndices.map(i => hourlyData.visibility[i]).filter(v => v !== null);
+      if (visibilities.length > 0) {
+        visibilityMin = Math.min(...visibilities);
+      }
+      
+      const pressures = todayIndices.map(i => hourlyData.surface_pressure ? hourlyData.surface_pressure[i] : null).filter(p => p !== null);
+      if (pressures.length > 0) {
+        pressureAvg = Math.round(pressures.reduce((a, b) => a + b, 0) / pressures.length * 10) / 10;
+      }
+    }
+  }
   
   return {
     date: dailyData.time[dayIndex],
@@ -92,7 +117,10 @@ function getTodayData(dailyData) {
     wind_gusts_max: dailyData.wind_gusts_10m_max[dayIndex],
     wind_direction_dominant: dailyData.wind_direction_10m_dominant[dayIndex],
     weather_code: dailyData.weather_code[dayIndex],
-    weather_text: weatherCodeToText[dailyData.weather_code[dayIndex]] || "Unknown"
+    weather_text: weatherCodeToText[dailyData.weather_code[dayIndex]] || "Unknown",
+    humidity_avg: humidityAvg,
+    visibility_min: visibilityMin,
+    pressure_avg: pressureAvg
   };
 }
 
@@ -110,6 +138,8 @@ function getForecastDays(dailyData, days = 7) {
       temperature_max: dailyData.temperature_2m_max[idx],
       temperature_min: dailyData.temperature_2m_min[idx],
       precipitation_sum: dailyData.precipitation_sum[idx],
+      rain_sum: dailyData.rain_sum[idx],
+      snowfall_sum: dailyData.snowfall_sum[idx],
       precipitation_probability_max: dailyData.precipitation_probability_max[idx],
       weather_code: dailyData.weather_code[idx],
       weather_text: weatherCodeToText[dailyData.weather_code[idx]] || "Unknown",
@@ -210,7 +240,7 @@ async function getOpenMeteoWeather(latitude = 43.455045, longitude = -80.55851, 
         }
       },
       
-      today: getTodayData(data.daily),
+      today: getTodayData(data.daily, data.hourly),
       
       forecast: {
         daily: getForecastDays(data.daily, 7),
