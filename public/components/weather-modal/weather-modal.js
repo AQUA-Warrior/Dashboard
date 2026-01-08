@@ -25,6 +25,47 @@ class WeatherModal extends HTMLElement {
     this.loadWeather = this.loadWeather.bind(this);
   }
 
+  getWeatherIconUrl(weatherCode, isDay = true) {
+    // WMO Weather interpretation codes mapped to OpenWeatherMap icons (colorful)
+    // OpenWeatherMap icons are colorful and match real weather apps
+    const baseUrl = 'https://openweathermap.org/img/wn';
+    
+    const iconMap = {
+      0: '01',      // Clear sky
+      1: '02',      // Mainly clear
+      2: '02',      // Partly cloudy
+      3: '04',      // Overcast
+      45: '50',     // Fog
+      48: '50',     // Depositing rime fog
+      51: '09',     // Light drizzle
+      53: '09',     // Moderate drizzle
+      55: '10',     // Dense drizzle
+      56: '10',     // Light freezing drizzle
+      57: '10',     // Dense freezing drizzle
+      61: '10',     // Slight rain
+      63: '10',     // Moderate rain
+      65: '11',     // Heavy rain
+      66: '10',     // Light freezing rain
+      67: '11',     // Heavy freezing rain
+      71: '13',     // Slight snow fall
+      73: '13',     // Moderate snow fall
+      75: '13',     // Heavy snow fall
+      77: '13',     // Snow grains
+      80: '09',     // Slight rain showers
+      81: '10',     // Moderate rain showers
+      82: '11',     // Violent rain showers
+      85: '13',     // Slight snow showers
+      86: '13',     // Heavy snow showers
+      95: '11',     // Thunderstorm
+      96: '11',     // Thunderstorm with slight hail
+      99: '11'      // Thunderstorm with heavy hail
+    };
+    
+    const iconCode = iconMap[weatherCode] || '01';
+    const timeCode = isDay ? 'd' : 'n';
+    return `${baseUrl}/${iconCode}${timeCode}@2x.png`;
+  }
+
   connectedCallback() {
     this.shadowRoot.innerHTML = WEATHER_MODAL_TEMPLATE;
 
@@ -104,6 +145,7 @@ class WeatherModal extends HTMLElement {
         <div class="weather-section current-section">
           <h3>Current Conditions</h3>
           <div class="location">${this.escapeHTML(location.name)}</div>
+          <img class="weather-icon-large" src="${this.getWeatherIconUrl(current.weather_code, current.is_day)}" alt="${this.escapeHTML(current.conditions)}" />
           <div class="big-temp">${Math.round(current.temperature)}°C</div>
           <div class="conditions">${this.escapeHTML(current.conditions)}</div>
           <div class="feels-like">Feels like ${Math.round(current.feelslike)}°C</div>
@@ -225,6 +267,7 @@ class WeatherModal extends HTMLElement {
             ${forecast.daily.map(day => `
               <div class="forecast-day">
                 <div class="day-name">${this.formatDate(day.date)}</div>
+                <img class="day-weather-icon" src="${this.getWeatherIconUrl(day.weather_code)}" alt="${this.escapeHTML(day.weather_text)}" />
                 <div class="day-conditions">${this.escapeHTML(day.weather_text)}</div>
                 <div class="day-temp">${Math.round(day.temperature_max)}° / ${Math.round(day.temperature_min)}°</div>
                 ${(day.rain_sum || 0) > 0 ? `<div class="day-detail">🌧️ Rain: ${day.rain_sum}mm</div>` : ''}
@@ -242,6 +285,7 @@ class WeatherModal extends HTMLElement {
             ${forecast.hourly.map(hour => `
               <div class="hourly-item">
                 <div class="hour-time">${this.formatHour(hour.time)}</div>
+                <img class="hour-weather-icon" src="${this.getWeatherIconUrl(hour.weather_code, hour.is_day)}" alt="${this.escapeHTML(hour.weather_text)}" />
                 <div class="hour-temp">${Math.round(hour.temperature)}°</div>
                 <div class="hour-conditions">${this.escapeHTML(hour.weather_text)}</div>
                 <div class="hour-detail">Feels like ${Math.round(hour.apparent_temperature)}°C</div>
